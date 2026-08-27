@@ -1,0 +1,73 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
+
+#define NUM_PHILOSOPHERS 5
+
+pthread_mutex_t chopsticks[NUM_PHILOSOPHERS];
+pthread_barrier_t start_barrier;
+
+void *philosopher(void *arg) {
+    int id = *(int *) arg;
+    int left = id;
+    int right = (id + 1) % NUM_PHILOSOPHERS;
+
+    printf("Philosopher %d is thinking\n", id);
+    fflush(stdout);
+
+    pthread_barrier_wait(&start_barrier);
+
+    printf("Philosopher %d wants to eat, picking up left chopstick %d\n", id, left);
+    fflush(stdout);
+    pthread_mutex_lock(&chopsticks[left]);
+
+    printf("Philosopher %d picked up left chopstick %d, waiting for right chopstick %d\n", id, left, right);
+    fflush(stdout);
+
+    usleep(500000);
+
+    pthread_mutex_lock(&chopsticks[right]);
+
+    printf("Philosopher %d is eating\n", id);
+    fflush(stdout);
+    usleep(200000);
+
+    pthread_mutex_unlock(&chopsticks[right]);
+    pthread_mutex_unlock(&chopsticks[left]);
+
+    printf("Philosopher %d finished eating and put down both chopsticks\n", id);
+    fflush(stdout);
+
+    return NULL;
+}
+
+int main() {
+    pthread_t threads[NUM_PHILOSOPHERS];
+    int ids[NUM_PHILOSOPHERS];
+
+    for (int i = 0; i < NUM_PHILOSOPHERS; i++) {
+        pthread_mutex_init(&chopsticks[i], NULL);
+    }
+
+    pthread_barrier_init(&start_barrier, NULL, NUM_PHILOSOPHERS);
+
+    for (int i = 0; i < NUM_PHILOSOPHERS; i++) {
+        ids[i] = i;
+        pthread_create(&threads[i], NULL, philosopher, &ids[i]);
+    }
+
+    for (int i = 0; i < NUM_PHILOSOPHERS; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    for (int i = 0; i < NUM_PHILOSOPHERS; i++) {
+        pthread_mutex_destroy(&chopsticks[i]);
+    }
+
+    pthread_barrier_destroy(&start_barrier);
+
+    printf("All philosophers have finished eating.\n");
+
+    return 0;
+}
